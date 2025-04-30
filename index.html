@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Processos TRT3 por Perito</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #results {
+            margin-top: 30px;
+        }
+        .result-count {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .process-card {
+            background-color: #f9f9f9;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .process-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .process-number {
+            font-weight: 600;
+            font-size: 18px;
+        }
+        .process-date {
+            color: #7f8c8d;
+        }
+        .process-details {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .citation {
+            background-color: #eaf2f8;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        .citation-date {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3498db;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        .export-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .export-btn {
+            background-color: #2ecc71;
+        }
+        .export-btn:hover {
+            background-color: #27ae60;
+        }
+        .error {
+            color: #e74c3c;
+            background-color: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Consulta de Processos TRT3 por Perito</h1>
+        
+        <!-- Formulário de Autenticação -->
+        <div id="auth-form">
+            <div class="form-group">
+                <label for="username">Usuário:</label>
+                <input type="text" id="username" placeholder="Digite seu usuário">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" placeholder="Digite sua senha">
+            </div>
+            <button id="login-btn">Autenticar</button>
+            <div id="auth-error" class="error"></div>
+        </div>
+        
+        <!-- Formulário de Consulta (inicialmente oculto) -->
+        <div id="search-form" style="display: none;">
+            <div class="form-group">
+                <label for="perito">Nome ou CPF do Perito:</label>
+                <input type="text" id="perito" placeholder="Digite o nome completo ou CPF do perito">
+            </div>
+            
+            <h3>Filtros Adicionais</h3>
+            <div class="filters">
+                <div class="form-group">
+                    <label for="data-inicio">Data Início:</label>
+                    <input type="date" id="data-inicio">
+                </div>
+                <div class="form-group">
+                    <label for="data-fim">Data Fim:</label>
+                    <input type="date" id="data-fim">
+                </div>
+                <div class="form-group">
+                    <label for="comarca">Comarca:</label>
+                    <input type="text" id="comarca" placeholder="Digite a comarca">
+                </div>
+                <div class="form-group">
+                    <label for="situacao">Situação do Processo:</label>
+                    <select id="situacao">
+                        <option value="">Todas</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="Arquivado">Arquivado</option>
+                        <option value="Suspenso">Suspenso</option>
+                        <option value="Julgado">Julgado</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="search-btn">Consultar Processos</button>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Carregando resultados...</p>
+            </div>
+            
+            <div id="search-error" class="error"></div>
+            
+            <!-- Resultados da Consulta -->
+            <div id="results" style="display: none;">
+                <div class="result-count">Processos encontrados: <span id="count">0</span></div>
+                
+                <div id="process-list"></div>
+                
+                <div class="export-buttons">
+                    <button id="export-pdf" class="export-btn">Exportar PDF</button>
+                    <button id="export-excel" class="export-btn">Exportar Excel</button>
+                    <button id="export-csv" class="export-btn">Exportar CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import TRT3ApiClient from './tjr-trt3-api-client.js';
+        
+        // Instancia o cliente da API
+        const api = new TRT3ApiClient();
+        
+        // Elementos da interface
+        const authForm = document.getElementById('auth-form');
+        const searchForm = document.getElementById('search-form');
+        const loginBtn = document.getElementById('login-btn');
+        const searchBtn = document.getElementById('search-btn');
+        const results = document.getElementById('results');
+        const processList = document.getElementById('process-list');
+        const countElement = document.getElementById('count');
+        const loading = document.getElementById('loading');
+        const authError = document.getElementById('auth-error');
+        const searchError = document.getElementById('search-error');
+        
+        // Botões de exportação
+        const exportPdfBtn = document.getElementById('export-pdf');
+        const exportExcelBtn = document.getElementById('export-excel');
+        const exportCsvBtn = document.getElementById('export-csv');
+        
+        // Eventos
+        loginBtn.addEventListener('click', handleAuthentication);
+        searchBtn.addEventListener('click', handleSearch);
+        exportPdfBtn.addEventListener('click', () => handleExport('pdf'));
+        exportExcelBtn.addEventListener('click', () => handleExport('excel'));
+        exportCsvBtn.addEventListener('click', () => handleExport('csv'));
+        
+        // Função para autenticação
+        async function handleAuthentication() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                showError(authError, 'Preencha o usuário e senha.');
+                return;
+            }
+            
+            try {
+                const autenticado = await api.autenticar(username, password);
+                if (autenticado) {
+                    authForm.style.display = 'none';
+                    searchForm.style.display = 'block';
+                    hideError(authError);
+                } else {
+                    showError(authError, 'Falha na autenticação. Verifique suas credenciais.');
+                }
+            } catch (error) {
+                showError(authError, `Erro na autenticação: ${error.message}`);
+            }
+        }
+        
+        // Função para busca de processos
+        async function handleSearch() {
+            const perito = document.getElementById('perito').value.trim();
+            
+            if (!perito) {
+                showError(searchError, 'Digite o nome ou CPF do perito.');
+                return;
+            }
+            
+            // Coleta os filtros
+            const filtros = {
+                dataInicio: document.getElementById('data-inicio').value,
+                dataFim: document.getElementById('data-fim').value,
+                comarca: document.getElementById('comarca').value.trim(),
+                situacao: document.getElementById('situacao').value
+            };
+            
+            // Remove filtros vazios
+            Object.keys(filtros).forEach(key => {
+                if (!filtros[key]) delete filtros[key];
+            });
+            
+            try {
+                showLoading();
+                hideError(searchError);
+                
+                const processos = await api.consultarProcessosPorPerito(perito, filtros);
+                
+                // Atualiza a contagem
+                countElement.textContent = processos.length;
+                
+                // Limpa a lista atual
+                processList.innerHTML = '';
+                
+                // Processa os resultados
+                if (processos.length > 0) {
+                    for (const processo of processos) {
+                        await renderProcesso(processo, perito);
+                    }
+                    results.style.display = 'block';
+                } else {
+                    processList.innerHTML = '<p>Nenhum processo encontrado para os critérios informados.</p>';
+                    results.style.display = 'block';
+                }
+            } catch (error) {
+                showError(searchError, `Erro na consulta: ${error.message}`);
+                results.style.display = 'none';
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Função para renderizar um processo
+        async function renderProcesso(processo, perito) {
+            // Cria o card do processo
+            const card = document.createElement('div');
+            card.className = 'process-card';
+            
+            // Cabeçalho do processo
+            const header = document.createElement('div');
+            header.className = 'process-header';
+            
+            const number = document.createElement('div');
+            number.className = 'process-number';
+            number.textContent = processo.numero;
+            
+            const date = document.createElement('div');
+            date.className = 'process-date';
+            date.textContent = formatarData(processo.dataDistribuicao);
+            
+            header.appendChild(number);
+            header.appendChild(date);
+            card.appendChild(header);
+            
+            // Informações básicas
+            const info = document.createElement('div');
+            info.innerHTML = `
+                <div><strong>Vara:</strong> ${processo.vara}</div>
+                <div><strong>Comarca:</strong> ${processo.comarca}</div>
+                <div><strong>Situação:</strong> ${processo.situacao}</div>
+            `;
+            card.appendChild(info);
+            
+            // Botão para expandir detalhes
+            const detailsBtn = document.createElement('button');
+            detailsBtn.textContent = 'Ver Detalhes e Citações';
+            detailsBtn.style.marginTop = '10px';
+            
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'process-details';
+            detailsDiv.style.display = 'none';
+            
+            // Evento para carregar detalhes
+            let detalhesCarregados = false;
+            detailsBtn.addEventListener('click', async () => {
+                if (detailsDiv.style.display === 'none') {
+                    detailsDiv.style.display = 'block';
+                    detailsBtn.textContent = 'Ocultar Detalhes';
+                    
+                    // Carrega os detalhes apenas na primeira vez
+                    if (!detalhesCarregados) {
+                        try {
+                            detailsDiv.innerHTML = '<p>Carregando detalhes...</p>';
+                            
+                            // Obtém detalhes do processo
+                            const detalhes = await api.obterDetalhesProcesso(processo.numero);
+                            
+                            // Busca citações específicas do perito
+                            const citacoes = await api.buscarCitacoesPeritoEmProcesso(processo.numero, perito);
+                            
+                            // Atualiza o conteúdo
+                            let content = `
+                                <div><strong>Valor da Causa:</strong> R$ ${detalhes.valorCausa.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                                <div><strong>Classe:</strong> ${detalhes.classe}</div>
+                                <div><strong>Assunto:</strong> ${detalhes.assunto}</div>
+                                <div><strong>Partes:</strong></div>
+                                <ul>
+                            `;
+                            
+                            // Adiciona as partes
+                            detalhes.partes.forEach(parte => {
+                                content += `<li><strong>${parte.tipo}:</strong> ${parte.nome}</li>`;
+                            });
+                            
+                            content += '</ul>';
+                            
+                            // Adiciona as citações
+                            content += `<div><strong>Citações do Perito (${citacoes.length}):</strong></div>`;
+                            
+                            if (citacoes.length > 0) {
+                                citacoes.forEach(citacao => {
+                                    content += `
+                                        <div class="citation">
+                                            <div class="citation-date">${formatarData(citacao.data)}</div>
+                                            <div><strong>Tipo:</strong> ${citacao.tipo}</div>
+                                            <div><strong>Documento:</strong> ${citacao.documento}</div>
+                                            <div><strong>Descrição:</strong> ${citacao.descricao || 'N/A'}</div>
+                                        </div>
+                                    `;
+                                });
+                            } else {
+                                content += '<p>Nenhuma citação direta encontrada.</p>';
+                            }
+                            
+                            detailsDiv.innerHTML = content;
+                            detalhesCarregados = true;
+                            
+                        } catch (error) {
+                            detailsDiv.innerHTML = `<p class="error">Erro ao carregar detalhes: ${error.message}</p>`;
+                        }
+                    }
+                } else {
+                    detailsDiv.style.display = 'none';
+                    detailsBtn.textContent = 'Ver Detalhes e Citações';
+                }
+            });
+            
+            card.appendChild(detailsBtn);
+            card.appendChild(detailsDiv);
+            processList.appendChild(card);
+        }
+        
+        // Função para exportar relatório
+        async function handleExport(formato) {
+            const perito = document.getElementById('perito').value.trim();
+            
+            if (!perito) {
+                showError(searchError, 'Digite o nome ou CPF do perito para exportar.');
+                return;
+            }
+            
+            try {
+                showLoading();
+                hideError(searchError);
+                
+                const relatorio = await api.exportarRelatorioProcessos(perito, formato);
+                
+                // Cria um link para download
+                const url = URL.createObjectURL(relatorio);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `processos_perito_${perito.replace(/\s+/g, '_')}.${formato}`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Limpa o objeto URL
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 0);
+                
+            } catch (error) {
+                showError(searchError, `Erro ao exportar relatório: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Funções auxiliares
+        function formatarData(dataString) {
+            if (!dataString) return 'N/A';
+            
+            const data = new Date(dataString);
+            return data.toLocaleDateString('pt-BR');
+        }
+        
+        function showLoading() {
+            loading.style.display = 'block';
+        }
+        
+        function hideLoading() {
+            loading.style.display = 'none';
+        }
+        
+        function showError(element, message) {
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+        
+        function hideError(element) {
+            element.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

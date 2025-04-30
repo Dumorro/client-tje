@@ -7,6 +7,8 @@ const router = Router();
 const apiClient = new TRT3ApiClient();
 const autenticacaoController = new AutenticacaoController(apiClient);
 
-router.post('/autenticacao', autenticacaoController.autenticar.bind(autenticacaoController));
+router.post('/autenticacao', (req, res) => {
+  autenticacaoController.autenticar(req, res);
+});
 
 export default router;
